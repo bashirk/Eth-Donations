@@ -1,0 +1,696 @@
+{
+  "contractName": "FundingHub",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "creator",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_fundingCap",
+          "type": "uint256"
+        },
+        {
+          "name": "_deadline",
+          "type": "uint256"
+        }
+      ],
+      "name": "createProject",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "status",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "createdAtBlock",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_project",
+          "type": "address"
+        },
+        {
+          "name": "_contribution",
+          "type": "uint256"
+        }
+      ],
+      "name": "contribute",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "projectCreator",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "standardProject",
+          "type": "address"
+        }
+      ],
+      "name": "LogStandardProjectCreation",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "projectContract",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "name": "contributor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "name": "contribution",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogProjectContribution",
+      "type": "event"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "pragma solidity ^0.4.11; \n\nimport '../Projects/StandardProject.sol'; \n\ncontract FundingHub {\n\n    event LogStandardProjectCreation(address indexed projectCreator, StandardProject indexed standardProject);\n    event LogProjectContribution(address indexed projectContract, address contributor, uint contribution);    \n\n    enum Status {\n        Active,\n        Inactive\n    }\n\n    address public creator;\n    uint public createdAtBlock;\n    Status public status;\n\n    function createProject(uint _fundingCap, uint _deadline) public returns(StandardProject);\n    function contribute(Project _project, uint _contribution) public;\n}",
+  "sourcePath": "C:\\Users\\Bashir-PC\\Documents\\ethereum\\Eth-Donations\\contracts\\Funding\\FundingHub.sol",
+  "ast": {
+    "attributes": {
+      "absolutePath": "/C/Users/Bashir-PC/Documents/ethereum/Eth-Donations/contracts/Funding/FundingHub.sol",
+      "exportedSymbols": {
+        "FundingHub": [
+          42
+        ]
+      }
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            "^",
+            "0.4",
+            ".11"
+          ]
+        },
+        "id": 1,
+        "name": "PragmaDirective",
+        "src": "0:24:0"
+      },
+      {
+        "attributes": {
+          "SourceUnit": 767,
+          "absolutePath": "/C/Users/Bashir-PC/Documents/ethereum/Eth-Donations/contracts/Projects/StandardProject.sol",
+          "file": "../Projects/StandardProject.sol",
+          "scope": 43,
+          "symbolAliases": [
+            null
+          ],
+          "unitAlias": ""
+        },
+        "id": 2,
+        "name": "ImportDirective",
+        "src": "27:41:0"
+      },
+      {
+        "attributes": {
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "contract",
+          "documentation": null,
+          "fullyImplemented": false,
+          "linearizedBaseContracts": [
+            42
+          ],
+          "name": "FundingHub",
+          "scope": 43
+        },
+        "children": [
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogStandardProjectCreation"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "projectCreator",
+                      "scope": 8,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 3,
+                        "name": "ElementaryTypeName",
+                        "src": "131:7:0"
+                      }
+                    ],
+                    "id": 4,
+                    "name": "VariableDeclaration",
+                    "src": "131:30:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "standardProject",
+                      "scope": 8,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "contract StandardProject",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "contractScope": null,
+                          "name": "StandardProject",
+                          "referencedDeclaration": 766,
+                          "type": "contract StandardProject"
+                        },
+                        "id": 5,
+                        "name": "UserDefinedTypeName",
+                        "src": "163:15:0"
+                      }
+                    ],
+                    "id": 6,
+                    "name": "VariableDeclaration",
+                    "src": "163:39:0"
+                  }
+                ],
+                "id": 7,
+                "name": "ParameterList",
+                "src": "130:73:0"
+              }
+            ],
+            "id": 8,
+            "name": "EventDefinition",
+            "src": "98:106:0"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogProjectContribution"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "projectContract",
+                      "scope": 16,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 9,
+                        "name": "ElementaryTypeName",
+                        "src": "238:7:0"
+                      }
+                    ],
+                    "id": 10,
+                    "name": "VariableDeclaration",
+                    "src": "238:31:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "name": "contributor",
+                      "scope": 16,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 11,
+                        "name": "ElementaryTypeName",
+                        "src": "271:7:0"
+                      }
+                    ],
+                    "id": 12,
+                    "name": "VariableDeclaration",
+                    "src": "271:19:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "name": "contribution",
+                      "scope": 16,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 13,
+                        "name": "ElementaryTypeName",
+                        "src": "292:4:0"
+                      }
+                    ],
+                    "id": 14,
+                    "name": "VariableDeclaration",
+                    "src": "292:17:0"
+                  }
+                ],
+                "id": 15,
+                "name": "ParameterList",
+                "src": "237:73:0"
+              }
+            ],
+            "id": 16,
+            "name": "EventDefinition",
+            "src": "209:102:0"
+          },
+          {
+            "attributes": {
+              "canonicalName": "FundingHub.Status",
+              "name": "Status"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "Active"
+                },
+                "id": 17,
+                "name": "EnumValue",
+                "src": "343:6:0"
+              },
+              {
+                "attributes": {
+                  "name": "Inactive"
+                },
+                "id": 18,
+                "name": "EnumValue",
+                "src": "359:8:0"
+              }
+            ],
+            "id": 19,
+            "name": "EnumDefinition",
+            "src": "321:52:0"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "creator",
+              "scope": 42,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "address",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "address",
+                  "type": "address"
+                },
+                "id": 20,
+                "name": "ElementaryTypeName",
+                "src": "379:7:0"
+              }
+            ],
+            "id": 21,
+            "name": "VariableDeclaration",
+            "src": "379:22:0"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "createdAtBlock",
+              "scope": 42,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint",
+                  "type": "uint256"
+                },
+                "id": 22,
+                "name": "ElementaryTypeName",
+                "src": "407:4:0"
+              }
+            ],
+            "id": 23,
+            "name": "VariableDeclaration",
+            "src": "407:26:0"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "status",
+              "scope": 42,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "enum FundingHub.Status",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "contractScope": null,
+                  "name": "Status",
+                  "referencedDeclaration": 19,
+                  "type": "enum FundingHub.Status"
+                },
+                "id": 24,
+                "name": "UserDefinedTypeName",
+                "src": "439:6:0"
+              }
+            ],
+            "id": 25,
+            "name": "VariableDeclaration",
+            "src": "439:20:0"
+          },
+          {
+            "attributes": {
+              "body": null,
+              "constant": false,
+              "implemented": false,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "createProject",
+              "payable": false,
+              "scope": 42,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_fundingCap",
+                      "scope": 34,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 26,
+                        "name": "ElementaryTypeName",
+                        "src": "489:4:0"
+                      }
+                    ],
+                    "id": 27,
+                    "name": "VariableDeclaration",
+                    "src": "489:16:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_deadline",
+                      "scope": 34,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 28,
+                        "name": "ElementaryTypeName",
+                        "src": "507:4:0"
+                      }
+                    ],
+                    "id": 29,
+                    "name": "VariableDeclaration",
+                    "src": "507:14:0"
+                  }
+                ],
+                "id": 30,
+                "name": "ParameterList",
+                "src": "488:34:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "",
+                      "scope": 34,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "contract StandardProject",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "contractScope": null,
+                          "name": "StandardProject",
+                          "referencedDeclaration": 766,
+                          "type": "contract StandardProject"
+                        },
+                        "id": 31,
+                        "name": "UserDefinedTypeName",
+                        "src": "538:15:0"
+                      }
+                    ],
+                    "id": 32,
+                    "name": "VariableDeclaration",
+                    "src": "538:15:0"
+                  }
+                ],
+                "id": 33,
+                "name": "ParameterList",
+                "src": "537:17:0"
+              }
+            ],
+            "id": 34,
+            "name": "FunctionDefinition",
+            "src": "466:89:0"
+          },
+          {
+            "attributes": {
+              "body": null,
+              "constant": false,
+              "implemented": false,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "contribute",
+              "payable": false,
+              "scope": 42,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_project",
+                      "scope": 41,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "contract Project",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "contractScope": null,
+                          "name": "Project",
+                          "referencedDeclaration": 566,
+                          "type": "contract Project"
+                        },
+                        "id": 35,
+                        "name": "UserDefinedTypeName",
+                        "src": "580:7:0"
+                      }
+                    ],
+                    "id": 36,
+                    "name": "VariableDeclaration",
+                    "src": "580:16:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_contribution",
+                      "scope": 41,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 37,
+                        "name": "ElementaryTypeName",
+                        "src": "598:4:0"
+                      }
+                    ],
+                    "id": 38,
+                    "name": "VariableDeclaration",
+                    "src": "598:18:0"
+                  }
+                ],
+                "id": 39,
+                "name": "ParameterList",
+                "src": "579:38:0"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 40,
+                "name": "ParameterList",
+                "src": "624:0:0"
+              }
+            ],
+            "id": 41,
+            "name": "FunctionDefinition",
+            "src": "560:65:0"
+          }
+        ],
+        "id": 42,
+        "name": "ContractDefinition",
+        "src": "71:556:0"
+      }
+    ],
+    "id": 43,
+    "name": "SourceUnit",
+    "src": "0:627:0"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.18+commit.9cf6e910.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "1.0.1",
+  "updatedAt": "2019-07-26T19:55:56.086Z"
+}

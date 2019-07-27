@@ -1,0 +1,3407 @@
+{
+  "contractName": "Project",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "projectStatus",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "deadline",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "beneficiary",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "refund",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "payout",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "fundingToken",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "amountRaised",
+      "outputs": [
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "fundingStage",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "fundingCap",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_funding",
+          "type": "uint256"
+        },
+        {
+          "name": "investor",
+          "type": "address"
+        }
+      ],
+      "name": "fund",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "_creator",
+          "type": "address"
+        },
+        {
+          "name": "_fundingCap",
+          "type": "uint256"
+        },
+        {
+          "name": "_deadline",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "fallback"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "contributor",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogProjectContributed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "name": "funding",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogFundingCapReached",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "contributor",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "project",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogRefund",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "payout",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogPayout",
+      "type": "event"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "pragma solidity ^0.4.11; \n\nimport '../Tokens/FundingToken.sol'; \n\ncontract Project {\n\n    event LogProjectContributed(address indexed contributor, uint indexed amount);\n    event LogFundingCapReached(uint indexed time, uint funding);\n    event LogRefund(address indexed contributor, address indexed project, uint indexed amount); \n    event LogPayout(address indexed beneficiary, uint indexed payout);\n        \n    enum ProjectStatus {\n        Active, \n        Expired, \n        Closed\n    }\n\n    enum FundingStage {\n        Open,\n        FundingRaised,\n        CapReached, \n        EarlySuccess,\n        Success,\n        PaidOut,\n        Failed\n    }    \n                \n    uint createdAtBlock;\n    uint creationTime;\n    uint public deadline; \n    uint public fundingCap; \n    address public beneficiary;\n\n    ProjectStatus status;\n    FundingStage stage;  \n    FundingToken public fundingToken;  \n  \n    modifier evalExpiry {\n        if (now > creationTime + deadline && \n            status != ProjectStatus.Closed) {\n            status = ProjectStatus.Expired;            \n        }        \n        _;\n    } \n\n    modifier evalFundingStage {\n        if (status != ProjectStatus.Closed) {\n            if ((stage != FundingStage.CapReached || \n                stage != FundingStage.EarlySuccess) && \n                status == ProjectStatus.Expired) {\n                    stage = FundingStage.Failed;\n            } else if (stage == FundingStage.CapReached && \n                       status == ProjectStatus.Active) {\n                    stage = FundingStage.EarlySuccess;\n            } else if (stage == FundingStage.CapReached && \n                       status == ProjectStatus.Expired) {\n                    stage = FundingStage.Success;\n            }\n        }\n        _;\n    }    \n\n    function Project(address _creator, uint _fundingCap, uint _deadline)\n        public \n    {\n        beneficiary = _creator; \n        fundingCap = _fundingCap; \n        creationTime = now; \n        deadline = _deadline; \n        fundingToken = new FundingToken();\n        stage = FundingStage.Open;\n        status = ProjectStatus.Active;\n    }   \n\n\tfunction fund(uint _funding, address investor);\n\tfunction refund();\n\tfunction payout();\n\n    function amountRaised()\n        public \n        constant\n        returns(uint amount)\n    {\n        amount = fundingToken.balanceOf(this);\n    }\n\n    function projectStatus()\n        evalExpiry\n        evalFundingStage\n        public \n        constant \n        returns (ProjectStatus)\n    {\n        return status;\n    }\n\n    function fundingStage()\n        evalExpiry\n        evalFundingStage    \n        public \n        constant \n        returns (FundingStage)\n    {\n        return stage;\n    }    \n\n    function () {}          \n}",
+  "sourcePath": "C:\\Users\\Bashir-PC\\Documents\\ethereum\\Eth-Donations\\contracts\\Projects\\Project.sol",
+  "ast": {
+    "attributes": {
+      "absolutePath": "/C/Users/Bashir-PC/Documents/ethereum/Eth-Donations/contracts/Projects/Project.sol",
+      "exportedSymbols": {
+        "Project": [
+          566
+        ]
+      }
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            "^",
+            "0.4",
+            ".11"
+          ]
+        },
+        "id": 329,
+        "name": "PragmaDirective",
+        "src": "0:24:4"
+      },
+      {
+        "attributes": {
+          "SourceUnit": 1102,
+          "absolutePath": "/C/Users/Bashir-PC/Documents/ethereum/Eth-Donations/contracts/Tokens/FundingToken.sol",
+          "file": "../Tokens/FundingToken.sol",
+          "scope": 567,
+          "symbolAliases": [
+            null
+          ],
+          "unitAlias": ""
+        },
+        "id": 330,
+        "name": "ImportDirective",
+        "src": "27:36:4"
+      },
+      {
+        "attributes": {
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            1101
+          ],
+          "contractKind": "contract",
+          "documentation": null,
+          "fullyImplemented": false,
+          "linearizedBaseContracts": [
+            566
+          ],
+          "name": "Project",
+          "scope": 567
+        },
+        "children": [
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogProjectContributed"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "contributor",
+                      "scope": 336,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 331,
+                        "name": "ElementaryTypeName",
+                        "src": "118:7:4"
+                      }
+                    ],
+                    "id": 332,
+                    "name": "VariableDeclaration",
+                    "src": "118:27:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "amount",
+                      "scope": 336,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 333,
+                        "name": "ElementaryTypeName",
+                        "src": "147:4:4"
+                      }
+                    ],
+                    "id": 334,
+                    "name": "VariableDeclaration",
+                    "src": "147:19:4"
+                  }
+                ],
+                "id": 335,
+                "name": "ParameterList",
+                "src": "117:50:4"
+              }
+            ],
+            "id": 336,
+            "name": "EventDefinition",
+            "src": "90:78:4"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogFundingCapReached"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "time",
+                      "scope": 342,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 337,
+                        "name": "ElementaryTypeName",
+                        "src": "200:4:4"
+                      }
+                    ],
+                    "id": 338,
+                    "name": "VariableDeclaration",
+                    "src": "200:17:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": false,
+                      "name": "funding",
+                      "scope": 342,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 339,
+                        "name": "ElementaryTypeName",
+                        "src": "219:4:4"
+                      }
+                    ],
+                    "id": 340,
+                    "name": "VariableDeclaration",
+                    "src": "219:12:4"
+                  }
+                ],
+                "id": 341,
+                "name": "ParameterList",
+                "src": "199:33:4"
+              }
+            ],
+            "id": 342,
+            "name": "EventDefinition",
+            "src": "173:60:4"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogRefund"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "contributor",
+                      "scope": 350,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 343,
+                        "name": "ElementaryTypeName",
+                        "src": "254:7:4"
+                      }
+                    ],
+                    "id": 344,
+                    "name": "VariableDeclaration",
+                    "src": "254:27:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "project",
+                      "scope": 350,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 345,
+                        "name": "ElementaryTypeName",
+                        "src": "283:7:4"
+                      }
+                    ],
+                    "id": 346,
+                    "name": "VariableDeclaration",
+                    "src": "283:23:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "amount",
+                      "scope": 350,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 347,
+                        "name": "ElementaryTypeName",
+                        "src": "308:4:4"
+                      }
+                    ],
+                    "id": 348,
+                    "name": "VariableDeclaration",
+                    "src": "308:19:4"
+                  }
+                ],
+                "id": 349,
+                "name": "ParameterList",
+                "src": "253:75:4"
+              }
+            ],
+            "id": 350,
+            "name": "EventDefinition",
+            "src": "238:91:4"
+          },
+          {
+            "attributes": {
+              "anonymous": false,
+              "name": "LogPayout"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "beneficiary",
+                      "scope": 356,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 351,
+                        "name": "ElementaryTypeName",
+                        "src": "351:7:4"
+                      }
+                    ],
+                    "id": 352,
+                    "name": "VariableDeclaration",
+                    "src": "351:27:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "indexed": true,
+                      "name": "payout",
+                      "scope": 356,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 353,
+                        "name": "ElementaryTypeName",
+                        "src": "380:4:4"
+                      }
+                    ],
+                    "id": 354,
+                    "name": "VariableDeclaration",
+                    "src": "380:19:4"
+                  }
+                ],
+                "id": 355,
+                "name": "ParameterList",
+                "src": "350:50:4"
+              }
+            ],
+            "id": 356,
+            "name": "EventDefinition",
+            "src": "335:66:4"
+          },
+          {
+            "attributes": {
+              "canonicalName": "Project.ProjectStatus",
+              "name": "ProjectStatus"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "Active"
+                },
+                "id": 357,
+                "name": "EnumValue",
+                "src": "444:6:4"
+              },
+              {
+                "attributes": {
+                  "name": "Expired"
+                },
+                "id": 358,
+                "name": "EnumValue",
+                "src": "461:7:4"
+              },
+              {
+                "attributes": {
+                  "name": "Closed"
+                },
+                "id": 359,
+                "name": "EnumValue",
+                "src": "479:6:4"
+              }
+            ],
+            "id": 360,
+            "name": "EnumDefinition",
+            "src": "415:76:4"
+          },
+          {
+            "attributes": {
+              "canonicalName": "Project.FundingStage",
+              "name": "FundingStage"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "Open"
+                },
+                "id": 361,
+                "name": "EnumValue",
+                "src": "525:4:4"
+              },
+              {
+                "attributes": {
+                  "name": "FundingRaised"
+                },
+                "id": 362,
+                "name": "EnumValue",
+                "src": "539:13:4"
+              },
+              {
+                "attributes": {
+                  "name": "CapReached"
+                },
+                "id": 363,
+                "name": "EnumValue",
+                "src": "562:10:4"
+              },
+              {
+                "attributes": {
+                  "name": "EarlySuccess"
+                },
+                "id": 364,
+                "name": "EnumValue",
+                "src": "583:12:4"
+              },
+              {
+                "attributes": {
+                  "name": "Success"
+                },
+                "id": 365,
+                "name": "EnumValue",
+                "src": "605:7:4"
+              },
+              {
+                "attributes": {
+                  "name": "PaidOut"
+                },
+                "id": 366,
+                "name": "EnumValue",
+                "src": "622:7:4"
+              },
+              {
+                "attributes": {
+                  "name": "Failed"
+                },
+                "id": 367,
+                "name": "EnumValue",
+                "src": "639:6:4"
+              }
+            ],
+            "id": 368,
+            "name": "EnumDefinition",
+            "src": "497:154:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "createdAtBlock",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "value": null,
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint",
+                  "type": "uint256"
+                },
+                "id": 369,
+                "name": "ElementaryTypeName",
+                "src": "677:4:4"
+              }
+            ],
+            "id": 370,
+            "name": "VariableDeclaration",
+            "src": "677:19:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "creationTime",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "value": null,
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint",
+                  "type": "uint256"
+                },
+                "id": 371,
+                "name": "ElementaryTypeName",
+                "src": "702:4:4"
+              }
+            ],
+            "id": 372,
+            "name": "VariableDeclaration",
+            "src": "702:17:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "deadline",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint",
+                  "type": "uint256"
+                },
+                "id": 373,
+                "name": "ElementaryTypeName",
+                "src": "725:4:4"
+              }
+            ],
+            "id": 374,
+            "name": "VariableDeclaration",
+            "src": "725:20:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "fundingCap",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "uint256",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "uint",
+                  "type": "uint256"
+                },
+                "id": 375,
+                "name": "ElementaryTypeName",
+                "src": "752:4:4"
+              }
+            ],
+            "id": 376,
+            "name": "VariableDeclaration",
+            "src": "752:22:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "beneficiary",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "address",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "name": "address",
+                  "type": "address"
+                },
+                "id": 377,
+                "name": "ElementaryTypeName",
+                "src": "781:7:4"
+              }
+            ],
+            "id": 378,
+            "name": "VariableDeclaration",
+            "src": "781:26:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "status",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "enum Project.ProjectStatus",
+              "value": null,
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "contractScope": null,
+                  "name": "ProjectStatus",
+                  "referencedDeclaration": 360,
+                  "type": "enum Project.ProjectStatus"
+                },
+                "id": 379,
+                "name": "UserDefinedTypeName",
+                "src": "814:13:4"
+              }
+            ],
+            "id": 380,
+            "name": "VariableDeclaration",
+            "src": "814:20:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "stage",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "enum Project.FundingStage",
+              "value": null,
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "contractScope": null,
+                  "name": "FundingStage",
+                  "referencedDeclaration": 368,
+                  "type": "enum Project.FundingStage"
+                },
+                "id": 381,
+                "name": "UserDefinedTypeName",
+                "src": "840:12:4"
+              }
+            ],
+            "id": 382,
+            "name": "VariableDeclaration",
+            "src": "840:18:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "name": "fundingToken",
+              "scope": 566,
+              "stateVariable": true,
+              "storageLocation": "default",
+              "type": "contract FundingToken",
+              "value": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "contractScope": null,
+                  "name": "FundingToken",
+                  "referencedDeclaration": 1101,
+                  "type": "contract FundingToken"
+                },
+                "id": 383,
+                "name": "UserDefinedTypeName",
+                "src": "866:12:4"
+              }
+            ],
+            "id": 384,
+            "name": "VariableDeclaration",
+            "src": "866:32:4"
+          },
+          {
+            "attributes": {
+              "name": "evalExpiry",
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 385,
+                "name": "ParameterList",
+                "src": "929:0:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "falseBody": null
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "commonType": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          },
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "&&",
+                          "type": "bool"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "commonType": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              },
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "operator": ">",
+                              "type": "bool"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 1453,
+                                  "type": "uint256",
+                                  "value": "now"
+                                },
+                                "id": 386,
+                                "name": "Identifier",
+                                "src": "943:3:4"
+                              },
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "commonType": {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  },
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "operator": "+",
+                                  "type": "uint256"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "overloadedDeclarations": [
+                                        null
+                                      ],
+                                      "referencedDeclaration": 372,
+                                      "type": "uint256",
+                                      "value": "creationTime"
+                                    },
+                                    "id": 387,
+                                    "name": "Identifier",
+                                    "src": "949:12:4"
+                                  },
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "overloadedDeclarations": [
+                                        null
+                                      ],
+                                      "referencedDeclaration": 374,
+                                      "type": "uint256",
+                                      "value": "deadline"
+                                    },
+                                    "id": 388,
+                                    "name": "Identifier",
+                                    "src": "964:8:4"
+                                  }
+                                ],
+                                "id": 389,
+                                "name": "BinaryOperation",
+                                "src": "949:23:4"
+                              }
+                            ],
+                            "id": 390,
+                            "name": "BinaryOperation",
+                            "src": "943:29:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "commonType": {
+                                "typeIdentifier": "t_enum$_ProjectStatus_$360",
+                                "typeString": "enum Project.ProjectStatus"
+                              },
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "operator": "!=",
+                              "type": "bool"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 380,
+                                  "type": "enum Project.ProjectStatus",
+                                  "value": "status"
+                                },
+                                "id": 391,
+                                "name": "Identifier",
+                                "src": "989:6:4"
+                              },
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "lValueRequested": false,
+                                  "member_name": "Closed",
+                                  "referencedDeclaration": null,
+                                  "type": "enum Project.ProjectStatus"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "overloadedDeclarations": [
+                                        null
+                                      ],
+                                      "referencedDeclaration": 360,
+                                      "type": "type(enum Project.ProjectStatus)",
+                                      "value": "ProjectStatus"
+                                    },
+                                    "id": 392,
+                                    "name": "Identifier",
+                                    "src": "999:13:4"
+                                  }
+                                ],
+                                "id": 393,
+                                "name": "MemberAccess",
+                                "src": "999:20:4"
+                              }
+                            ],
+                            "id": 394,
+                            "name": "BinaryOperation",
+                            "src": "989:30:4"
+                          }
+                        ],
+                        "id": 395,
+                        "name": "BinaryOperation",
+                        "src": "943:76:4"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "operator": "=",
+                                  "type": "enum Project.ProjectStatus"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "overloadedDeclarations": [
+                                        null
+                                      ],
+                                      "referencedDeclaration": 380,
+                                      "type": "enum Project.ProjectStatus",
+                                      "value": "status"
+                                    },
+                                    "id": 396,
+                                    "name": "Identifier",
+                                    "src": "1035:6:4"
+                                  },
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "isConstant": false,
+                                      "isLValue": false,
+                                      "isPure": true,
+                                      "lValueRequested": false,
+                                      "member_name": "Expired",
+                                      "referencedDeclaration": null,
+                                      "type": "enum Project.ProjectStatus"
+                                    },
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "overloadedDeclarations": [
+                                            null
+                                          ],
+                                          "referencedDeclaration": 360,
+                                          "type": "type(enum Project.ProjectStatus)",
+                                          "value": "ProjectStatus"
+                                        },
+                                        "id": 397,
+                                        "name": "Identifier",
+                                        "src": "1044:13:4"
+                                      }
+                                    ],
+                                    "id": 398,
+                                    "name": "MemberAccess",
+                                    "src": "1044:21:4"
+                                  }
+                                ],
+                                "id": 399,
+                                "name": "Assignment",
+                                "src": "1035:30:4"
+                              }
+                            ],
+                            "id": 400,
+                            "name": "ExpressionStatement",
+                            "src": "1035:30:4"
+                          }
+                        ],
+                        "id": 401,
+                        "name": "Block",
+                        "src": "1021:67:4"
+                      }
+                    ],
+                    "id": 402,
+                    "name": "IfStatement",
+                    "src": "939:149:4"
+                  },
+                  {
+                    "id": 403,
+                    "name": "PlaceholderStatement",
+                    "src": "1105:1:4"
+                  }
+                ],
+                "id": 404,
+                "name": "Block",
+                "src": "929:184:4"
+              }
+            ],
+            "id": 405,
+            "name": "ModifierDefinition",
+            "src": "909:204:4"
+          },
+          {
+            "attributes": {
+              "name": "evalFundingStage",
+              "visibility": "internal"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 406,
+                "name": "ParameterList",
+                "src": "1146:0:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "falseBody": null
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "commonType": {
+                            "typeIdentifier": "t_enum$_ProjectStatus_$360",
+                            "typeString": "enum Project.ProjectStatus"
+                          },
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "!=",
+                          "type": "bool"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 380,
+                              "type": "enum Project.ProjectStatus",
+                              "value": "status"
+                            },
+                            "id": 407,
+                            "name": "Identifier",
+                            "src": "1160:6:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "member_name": "Closed",
+                              "referencedDeclaration": null,
+                              "type": "enum Project.ProjectStatus"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 360,
+                                  "type": "type(enum Project.ProjectStatus)",
+                                  "value": "ProjectStatus"
+                                },
+                                "id": 408,
+                                "name": "Identifier",
+                                "src": "1170:13:4"
+                              }
+                            ],
+                            "id": 409,
+                            "name": "MemberAccess",
+                            "src": "1170:20:4"
+                          }
+                        ],
+                        "id": 410,
+                        "name": "BinaryOperation",
+                        "src": "1160:30:4"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "commonType": {
+                                    "typeIdentifier": "t_bool",
+                                    "typeString": "bool"
+                                  },
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "operator": "&&",
+                                  "type": "bool"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "isConstant": false,
+                                      "isInlineArray": false,
+                                      "isLValue": false,
+                                      "isPure": false,
+                                      "lValueRequested": false,
+                                      "type": "bool"
+                                    },
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "commonType": {
+                                            "typeIdentifier": "t_bool",
+                                            "typeString": "bool"
+                                          },
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": false,
+                                          "lValueRequested": false,
+                                          "operator": "||",
+                                          "type": "bool"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "commonType": {
+                                                "typeIdentifier": "t_enum$_FundingStage_$368",
+                                                "typeString": "enum Project.FundingStage"
+                                              },
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": false,
+                                              "lValueRequested": false,
+                                              "operator": "!=",
+                                              "type": "bool"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 382,
+                                                  "type": "enum Project.FundingStage",
+                                                  "value": "stage"
+                                                },
+                                                "id": 411,
+                                                "name": "Identifier",
+                                                "src": "1211:5:4"
+                                              },
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": true,
+                                                  "lValueRequested": false,
+                                                  "member_name": "CapReached",
+                                                  "referencedDeclaration": null,
+                                                  "type": "enum Project.FundingStage"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 368,
+                                                      "type": "type(enum Project.FundingStage)",
+                                                      "value": "FundingStage"
+                                                    },
+                                                    "id": 412,
+                                                    "name": "Identifier",
+                                                    "src": "1220:12:4"
+                                                  }
+                                                ],
+                                                "id": 413,
+                                                "name": "MemberAccess",
+                                                "src": "1220:23:4"
+                                              }
+                                            ],
+                                            "id": 414,
+                                            "name": "BinaryOperation",
+                                            "src": "1211:32:4"
+                                          },
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "commonType": {
+                                                "typeIdentifier": "t_enum$_FundingStage_$368",
+                                                "typeString": "enum Project.FundingStage"
+                                              },
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": false,
+                                              "lValueRequested": false,
+                                              "operator": "!=",
+                                              "type": "bool"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 382,
+                                                  "type": "enum Project.FundingStage",
+                                                  "value": "stage"
+                                                },
+                                                "id": 415,
+                                                "name": "Identifier",
+                                                "src": "1264:5:4"
+                                              },
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": true,
+                                                  "lValueRequested": false,
+                                                  "member_name": "EarlySuccess",
+                                                  "referencedDeclaration": null,
+                                                  "type": "enum Project.FundingStage"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 368,
+                                                      "type": "type(enum Project.FundingStage)",
+                                                      "value": "FundingStage"
+                                                    },
+                                                    "id": 416,
+                                                    "name": "Identifier",
+                                                    "src": "1273:12:4"
+                                                  }
+                                                ],
+                                                "id": 417,
+                                                "name": "MemberAccess",
+                                                "src": "1273:25:4"
+                                              }
+                                            ],
+                                            "id": 418,
+                                            "name": "BinaryOperation",
+                                            "src": "1264:34:4"
+                                          }
+                                        ],
+                                        "id": 419,
+                                        "name": "BinaryOperation",
+                                        "src": "1211:87:4"
+                                      }
+                                    ],
+                                    "id": 420,
+                                    "name": "TupleExpression",
+                                    "src": "1210:89:4"
+                                  },
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "commonType": {
+                                        "typeIdentifier": "t_enum$_ProjectStatus_$360",
+                                        "typeString": "enum Project.ProjectStatus"
+                                      },
+                                      "isConstant": false,
+                                      "isLValue": false,
+                                      "isPure": false,
+                                      "lValueRequested": false,
+                                      "operator": "==",
+                                      "type": "bool"
+                                    },
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "overloadedDeclarations": [
+                                            null
+                                          ],
+                                          "referencedDeclaration": 380,
+                                          "type": "enum Project.ProjectStatus",
+                                          "value": "status"
+                                        },
+                                        "id": 421,
+                                        "name": "Identifier",
+                                        "src": "1320:6:4"
+                                      },
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": true,
+                                          "lValueRequested": false,
+                                          "member_name": "Expired",
+                                          "referencedDeclaration": null,
+                                          "type": "enum Project.ProjectStatus"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "overloadedDeclarations": [
+                                                null
+                                              ],
+                                              "referencedDeclaration": 360,
+                                              "type": "type(enum Project.ProjectStatus)",
+                                              "value": "ProjectStatus"
+                                            },
+                                            "id": 422,
+                                            "name": "Identifier",
+                                            "src": "1330:13:4"
+                                          }
+                                        ],
+                                        "id": 423,
+                                        "name": "MemberAccess",
+                                        "src": "1330:21:4"
+                                      }
+                                    ],
+                                    "id": 424,
+                                    "name": "BinaryOperation",
+                                    "src": "1320:31:4"
+                                  }
+                                ],
+                                "id": 425,
+                                "name": "BinaryOperation",
+                                "src": "1210:141:4"
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": false,
+                                          "lValueRequested": false,
+                                          "operator": "=",
+                                          "type": "enum Project.FundingStage"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "overloadedDeclarations": [
+                                                null
+                                              ],
+                                              "referencedDeclaration": 382,
+                                              "type": "enum Project.FundingStage",
+                                              "value": "stage"
+                                            },
+                                            "id": 426,
+                                            "name": "Identifier",
+                                            "src": "1375:5:4"
+                                          },
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": true,
+                                              "lValueRequested": false,
+                                              "member_name": "Failed",
+                                              "referencedDeclaration": null,
+                                              "type": "enum Project.FundingStage"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 368,
+                                                  "type": "type(enum Project.FundingStage)",
+                                                  "value": "FundingStage"
+                                                },
+                                                "id": 427,
+                                                "name": "Identifier",
+                                                "src": "1383:12:4"
+                                              }
+                                            ],
+                                            "id": 428,
+                                            "name": "MemberAccess",
+                                            "src": "1383:19:4"
+                                          }
+                                        ],
+                                        "id": 429,
+                                        "name": "Assignment",
+                                        "src": "1375:27:4"
+                                      }
+                                    ],
+                                    "id": 430,
+                                    "name": "ExpressionStatement",
+                                    "src": "1375:27:4"
+                                  }
+                                ],
+                                "id": 431,
+                                "name": "Block",
+                                "src": "1353:64:4"
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "commonType": {
+                                        "typeIdentifier": "t_bool",
+                                        "typeString": "bool"
+                                      },
+                                      "isConstant": false,
+                                      "isLValue": false,
+                                      "isPure": false,
+                                      "lValueRequested": false,
+                                      "operator": "&&",
+                                      "type": "bool"
+                                    },
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "commonType": {
+                                            "typeIdentifier": "t_enum$_FundingStage_$368",
+                                            "typeString": "enum Project.FundingStage"
+                                          },
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": false,
+                                          "lValueRequested": false,
+                                          "operator": "==",
+                                          "type": "bool"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "overloadedDeclarations": [
+                                                null
+                                              ],
+                                              "referencedDeclaration": 382,
+                                              "type": "enum Project.FundingStage",
+                                              "value": "stage"
+                                            },
+                                            "id": 432,
+                                            "name": "Identifier",
+                                            "src": "1427:5:4"
+                                          },
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": true,
+                                              "lValueRequested": false,
+                                              "member_name": "CapReached",
+                                              "referencedDeclaration": null,
+                                              "type": "enum Project.FundingStage"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 368,
+                                                  "type": "type(enum Project.FundingStage)",
+                                                  "value": "FundingStage"
+                                                },
+                                                "id": 433,
+                                                "name": "Identifier",
+                                                "src": "1436:12:4"
+                                              }
+                                            ],
+                                            "id": 434,
+                                            "name": "MemberAccess",
+                                            "src": "1436:23:4"
+                                          }
+                                        ],
+                                        "id": 435,
+                                        "name": "BinaryOperation",
+                                        "src": "1427:32:4"
+                                      },
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "commonType": {
+                                            "typeIdentifier": "t_enum$_ProjectStatus_$360",
+                                            "typeString": "enum Project.ProjectStatus"
+                                          },
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": false,
+                                          "lValueRequested": false,
+                                          "operator": "==",
+                                          "type": "bool"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "overloadedDeclarations": [
+                                                null
+                                              ],
+                                              "referencedDeclaration": 380,
+                                              "type": "enum Project.ProjectStatus",
+                                              "value": "status"
+                                            },
+                                            "id": 436,
+                                            "name": "Identifier",
+                                            "src": "1487:6:4"
+                                          },
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": true,
+                                              "lValueRequested": false,
+                                              "member_name": "Active",
+                                              "referencedDeclaration": null,
+                                              "type": "enum Project.ProjectStatus"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 360,
+                                                  "type": "type(enum Project.ProjectStatus)",
+                                                  "value": "ProjectStatus"
+                                                },
+                                                "id": 437,
+                                                "name": "Identifier",
+                                                "src": "1497:13:4"
+                                              }
+                                            ],
+                                            "id": 438,
+                                            "name": "MemberAccess",
+                                            "src": "1497:20:4"
+                                          }
+                                        ],
+                                        "id": 439,
+                                        "name": "BinaryOperation",
+                                        "src": "1487:30:4"
+                                      }
+                                    ],
+                                    "id": 440,
+                                    "name": "BinaryOperation",
+                                    "src": "1427:90:4"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": false,
+                                              "lValueRequested": false,
+                                              "operator": "=",
+                                              "type": "enum Project.FundingStage"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 382,
+                                                  "type": "enum Project.FundingStage",
+                                                  "value": "stage"
+                                                },
+                                                "id": 441,
+                                                "name": "Identifier",
+                                                "src": "1541:5:4"
+                                              },
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": true,
+                                                  "lValueRequested": false,
+                                                  "member_name": "EarlySuccess",
+                                                  "referencedDeclaration": null,
+                                                  "type": "enum Project.FundingStage"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 368,
+                                                      "type": "type(enum Project.FundingStage)",
+                                                      "value": "FundingStage"
+                                                    },
+                                                    "id": 442,
+                                                    "name": "Identifier",
+                                                    "src": "1549:12:4"
+                                                  }
+                                                ],
+                                                "id": 443,
+                                                "name": "MemberAccess",
+                                                "src": "1549:25:4"
+                                              }
+                                            ],
+                                            "id": 444,
+                                            "name": "Assignment",
+                                            "src": "1541:33:4"
+                                          }
+                                        ],
+                                        "id": 445,
+                                        "name": "ExpressionStatement",
+                                        "src": "1541:33:4"
+                                      }
+                                    ],
+                                    "id": 446,
+                                    "name": "Block",
+                                    "src": "1519:70:4"
+                                  },
+                                  {
+                                    "attributes": {
+                                      "falseBody": null
+                                    },
+                                    "children": [
+                                      {
+                                        "attributes": {
+                                          "argumentTypes": null,
+                                          "commonType": {
+                                            "typeIdentifier": "t_bool",
+                                            "typeString": "bool"
+                                          },
+                                          "isConstant": false,
+                                          "isLValue": false,
+                                          "isPure": false,
+                                          "lValueRequested": false,
+                                          "operator": "&&",
+                                          "type": "bool"
+                                        },
+                                        "children": [
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "commonType": {
+                                                "typeIdentifier": "t_enum$_FundingStage_$368",
+                                                "typeString": "enum Project.FundingStage"
+                                              },
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": false,
+                                              "lValueRequested": false,
+                                              "operator": "==",
+                                              "type": "bool"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 382,
+                                                  "type": "enum Project.FundingStage",
+                                                  "value": "stage"
+                                                },
+                                                "id": 447,
+                                                "name": "Identifier",
+                                                "src": "1599:5:4"
+                                              },
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": true,
+                                                  "lValueRequested": false,
+                                                  "member_name": "CapReached",
+                                                  "referencedDeclaration": null,
+                                                  "type": "enum Project.FundingStage"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 368,
+                                                      "type": "type(enum Project.FundingStage)",
+                                                      "value": "FundingStage"
+                                                    },
+                                                    "id": 448,
+                                                    "name": "Identifier",
+                                                    "src": "1608:12:4"
+                                                  }
+                                                ],
+                                                "id": 449,
+                                                "name": "MemberAccess",
+                                                "src": "1608:23:4"
+                                              }
+                                            ],
+                                            "id": 450,
+                                            "name": "BinaryOperation",
+                                            "src": "1599:32:4"
+                                          },
+                                          {
+                                            "attributes": {
+                                              "argumentTypes": null,
+                                              "commonType": {
+                                                "typeIdentifier": "t_enum$_ProjectStatus_$360",
+                                                "typeString": "enum Project.ProjectStatus"
+                                              },
+                                              "isConstant": false,
+                                              "isLValue": false,
+                                              "isPure": false,
+                                              "lValueRequested": false,
+                                              "operator": "==",
+                                              "type": "bool"
+                                            },
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "overloadedDeclarations": [
+                                                    null
+                                                  ],
+                                                  "referencedDeclaration": 380,
+                                                  "type": "enum Project.ProjectStatus",
+                                                  "value": "status"
+                                                },
+                                                "id": 451,
+                                                "name": "Identifier",
+                                                "src": "1659:6:4"
+                                              },
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": true,
+                                                  "lValueRequested": false,
+                                                  "member_name": "Expired",
+                                                  "referencedDeclaration": null,
+                                                  "type": "enum Project.ProjectStatus"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 360,
+                                                      "type": "type(enum Project.ProjectStatus)",
+                                                      "value": "ProjectStatus"
+                                                    },
+                                                    "id": 452,
+                                                    "name": "Identifier",
+                                                    "src": "1669:13:4"
+                                                  }
+                                                ],
+                                                "id": 453,
+                                                "name": "MemberAccess",
+                                                "src": "1669:21:4"
+                                              }
+                                            ],
+                                            "id": 454,
+                                            "name": "BinaryOperation",
+                                            "src": "1659:31:4"
+                                          }
+                                        ],
+                                        "id": 455,
+                                        "name": "BinaryOperation",
+                                        "src": "1599:91:4"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "attributes": {
+                                                  "argumentTypes": null,
+                                                  "isConstant": false,
+                                                  "isLValue": false,
+                                                  "isPure": false,
+                                                  "lValueRequested": false,
+                                                  "operator": "=",
+                                                  "type": "enum Project.FundingStage"
+                                                },
+                                                "children": [
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "overloadedDeclarations": [
+                                                        null
+                                                      ],
+                                                      "referencedDeclaration": 382,
+                                                      "type": "enum Project.FundingStage",
+                                                      "value": "stage"
+                                                    },
+                                                    "id": 456,
+                                                    "name": "Identifier",
+                                                    "src": "1714:5:4"
+                                                  },
+                                                  {
+                                                    "attributes": {
+                                                      "argumentTypes": null,
+                                                      "isConstant": false,
+                                                      "isLValue": false,
+                                                      "isPure": true,
+                                                      "lValueRequested": false,
+                                                      "member_name": "Success",
+                                                      "referencedDeclaration": null,
+                                                      "type": "enum Project.FundingStage"
+                                                    },
+                                                    "children": [
+                                                      {
+                                                        "attributes": {
+                                                          "argumentTypes": null,
+                                                          "overloadedDeclarations": [
+                                                            null
+                                                          ],
+                                                          "referencedDeclaration": 368,
+                                                          "type": "type(enum Project.FundingStage)",
+                                                          "value": "FundingStage"
+                                                        },
+                                                        "id": 457,
+                                                        "name": "Identifier",
+                                                        "src": "1722:12:4"
+                                                      }
+                                                    ],
+                                                    "id": 458,
+                                                    "name": "MemberAccess",
+                                                    "src": "1722:20:4"
+                                                  }
+                                                ],
+                                                "id": 459,
+                                                "name": "Assignment",
+                                                "src": "1714:28:4"
+                                              }
+                                            ],
+                                            "id": 460,
+                                            "name": "ExpressionStatement",
+                                            "src": "1714:28:4"
+                                          }
+                                        ],
+                                        "id": 461,
+                                        "name": "Block",
+                                        "src": "1692:65:4"
+                                      }
+                                    ],
+                                    "id": 462,
+                                    "name": "IfStatement",
+                                    "src": "1595:162:4"
+                                  }
+                                ],
+                                "id": 463,
+                                "name": "IfStatement",
+                                "src": "1423:334:4"
+                              }
+                            ],
+                            "id": 464,
+                            "name": "IfStatement",
+                            "src": "1206:551:4"
+                          }
+                        ],
+                        "id": 465,
+                        "name": "Block",
+                        "src": "1192:575:4"
+                      }
+                    ],
+                    "id": 466,
+                    "name": "IfStatement",
+                    "src": "1156:611:4"
+                  },
+                  {
+                    "id": 467,
+                    "name": "PlaceholderStatement",
+                    "src": "1776:1:4"
+                  }
+                ],
+                "id": 468,
+                "name": "Block",
+                "src": "1146:638:4"
+              }
+            ],
+            "id": 469,
+            "name": "ModifierDefinition",
+            "src": "1120:664:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "implemented": true,
+              "isConstructor": true,
+              "modifiers": [
+                null
+              ],
+              "name": "Project",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_creator",
+                      "scope": 511,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 470,
+                        "name": "ElementaryTypeName",
+                        "src": "1811:7:4"
+                      }
+                    ],
+                    "id": 471,
+                    "name": "VariableDeclaration",
+                    "src": "1811:16:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_fundingCap",
+                      "scope": 511,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 472,
+                        "name": "ElementaryTypeName",
+                        "src": "1829:4:4"
+                      }
+                    ],
+                    "id": 473,
+                    "name": "VariableDeclaration",
+                    "src": "1829:16:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_deadline",
+                      "scope": 511,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 474,
+                        "name": "ElementaryTypeName",
+                        "src": "1847:4:4"
+                      }
+                    ],
+                    "id": 475,
+                    "name": "VariableDeclaration",
+                    "src": "1847:14:4"
+                  }
+                ],
+                "id": 476,
+                "name": "ParameterList",
+                "src": "1810:52:4"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 477,
+                "name": "ParameterList",
+                "src": "1883:0:4"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "address"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 378,
+                              "type": "address",
+                              "value": "beneficiary"
+                            },
+                            "id": 478,
+                            "name": "Identifier",
+                            "src": "1893:11:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 471,
+                              "type": "address",
+                              "value": "_creator"
+                            },
+                            "id": 479,
+                            "name": "Identifier",
+                            "src": "1907:8:4"
+                          }
+                        ],
+                        "id": 480,
+                        "name": "Assignment",
+                        "src": "1893:22:4"
+                      }
+                    ],
+                    "id": 481,
+                    "name": "ExpressionStatement",
+                    "src": "1893:22:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "uint256"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 376,
+                              "type": "uint256",
+                              "value": "fundingCap"
+                            },
+                            "id": 482,
+                            "name": "Identifier",
+                            "src": "1926:10:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 473,
+                              "type": "uint256",
+                              "value": "_fundingCap"
+                            },
+                            "id": 483,
+                            "name": "Identifier",
+                            "src": "1939:11:4"
+                          }
+                        ],
+                        "id": 484,
+                        "name": "Assignment",
+                        "src": "1926:24:4"
+                      }
+                    ],
+                    "id": 485,
+                    "name": "ExpressionStatement",
+                    "src": "1926:24:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "uint256"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 372,
+                              "type": "uint256",
+                              "value": "creationTime"
+                            },
+                            "id": 486,
+                            "name": "Identifier",
+                            "src": "1961:12:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 1453,
+                              "type": "uint256",
+                              "value": "now"
+                            },
+                            "id": 487,
+                            "name": "Identifier",
+                            "src": "1976:3:4"
+                          }
+                        ],
+                        "id": 488,
+                        "name": "Assignment",
+                        "src": "1961:18:4"
+                      }
+                    ],
+                    "id": 489,
+                    "name": "ExpressionStatement",
+                    "src": "1961:18:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "uint256"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 374,
+                              "type": "uint256",
+                              "value": "deadline"
+                            },
+                            "id": 490,
+                            "name": "Identifier",
+                            "src": "1990:8:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 475,
+                              "type": "uint256",
+                              "value": "_deadline"
+                            },
+                            "id": 491,
+                            "name": "Identifier",
+                            "src": "2001:9:4"
+                          }
+                        ],
+                        "id": 492,
+                        "name": "Assignment",
+                        "src": "1990:20:4"
+                      }
+                    ],
+                    "id": 493,
+                    "name": "ExpressionStatement",
+                    "src": "1990:20:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "contract FundingToken"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 384,
+                              "type": "contract FundingToken",
+                              "value": "fundingToken"
+                            },
+                            "id": 494,
+                            "name": "Identifier",
+                            "src": "2021:12:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "arguments": [
+                                null
+                              ],
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "isStructConstructorCall": false,
+                              "lValueRequested": false,
+                              "names": [
+                                null
+                              ],
+                              "type": "contract FundingToken",
+                              "type_conversion": false
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": [
+                                    null
+                                  ],
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "type": "function () returns (contract FundingToken)"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "contractScope": null,
+                                      "name": "FundingToken",
+                                      "referencedDeclaration": 1101,
+                                      "type": "contract FundingToken"
+                                    },
+                                    "id": 495,
+                                    "name": "UserDefinedTypeName",
+                                    "src": "2040:12:4"
+                                  }
+                                ],
+                                "id": 496,
+                                "name": "NewExpression",
+                                "src": "2036:16:4"
+                              }
+                            ],
+                            "id": 497,
+                            "name": "FunctionCall",
+                            "src": "2036:18:4"
+                          }
+                        ],
+                        "id": 498,
+                        "name": "Assignment",
+                        "src": "2021:33:4"
+                      }
+                    ],
+                    "id": 499,
+                    "name": "ExpressionStatement",
+                    "src": "2021:33:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "enum Project.FundingStage"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 382,
+                              "type": "enum Project.FundingStage",
+                              "value": "stage"
+                            },
+                            "id": 500,
+                            "name": "Identifier",
+                            "src": "2064:5:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "member_name": "Open",
+                              "referencedDeclaration": null,
+                              "type": "enum Project.FundingStage"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 368,
+                                  "type": "type(enum Project.FundingStage)",
+                                  "value": "FundingStage"
+                                },
+                                "id": 501,
+                                "name": "Identifier",
+                                "src": "2072:12:4"
+                              }
+                            ],
+                            "id": 502,
+                            "name": "MemberAccess",
+                            "src": "2072:17:4"
+                          }
+                        ],
+                        "id": 503,
+                        "name": "Assignment",
+                        "src": "2064:25:4"
+                      }
+                    ],
+                    "id": 504,
+                    "name": "ExpressionStatement",
+                    "src": "2064:25:4"
+                  },
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "enum Project.ProjectStatus"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 380,
+                              "type": "enum Project.ProjectStatus",
+                              "value": "status"
+                            },
+                            "id": 505,
+                            "name": "Identifier",
+                            "src": "2099:6:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "member_name": "Active",
+                              "referencedDeclaration": null,
+                              "type": "enum Project.ProjectStatus"
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 360,
+                                  "type": "type(enum Project.ProjectStatus)",
+                                  "value": "ProjectStatus"
+                                },
+                                "id": 506,
+                                "name": "Identifier",
+                                "src": "2108:13:4"
+                              }
+                            ],
+                            "id": 507,
+                            "name": "MemberAccess",
+                            "src": "2108:20:4"
+                          }
+                        ],
+                        "id": 508,
+                        "name": "Assignment",
+                        "src": "2099:29:4"
+                      }
+                    ],
+                    "id": 509,
+                    "name": "ExpressionStatement",
+                    "src": "2099:29:4"
+                  }
+                ],
+                "id": 510,
+                "name": "Block",
+                "src": "1883:252:4"
+              }
+            ],
+            "id": 511,
+            "name": "FunctionDefinition",
+            "src": "1794:341:4"
+          },
+          {
+            "attributes": {
+              "body": null,
+              "constant": false,
+              "implemented": false,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "fund",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "_funding",
+                      "scope": 518,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 512,
+                        "name": "ElementaryTypeName",
+                        "src": "2155:4:4"
+                      }
+                    ],
+                    "id": 513,
+                    "name": "VariableDeclaration",
+                    "src": "2155:13:4"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "investor",
+                      "scope": 518,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 514,
+                        "name": "ElementaryTypeName",
+                        "src": "2170:7:4"
+                      }
+                    ],
+                    "id": 515,
+                    "name": "VariableDeclaration",
+                    "src": "2170:16:4"
+                  }
+                ],
+                "id": 516,
+                "name": "ParameterList",
+                "src": "2154:33:4"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 517,
+                "name": "ParameterList",
+                "src": "2187:0:4"
+              }
+            ],
+            "id": 518,
+            "name": "FunctionDefinition",
+            "src": "2141:47:4"
+          },
+          {
+            "attributes": {
+              "body": null,
+              "constant": false,
+              "implemented": false,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "refund",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 519,
+                "name": "ParameterList",
+                "src": "2205:2:4"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 520,
+                "name": "ParameterList",
+                "src": "2207:0:4"
+              }
+            ],
+            "id": 521,
+            "name": "FunctionDefinition",
+            "src": "2190:18:4"
+          },
+          {
+            "attributes": {
+              "body": null,
+              "constant": false,
+              "implemented": false,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "payout",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 522,
+                "name": "ParameterList",
+                "src": "2225:2:4"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 523,
+                "name": "ParameterList",
+                "src": "2227:0:4"
+              }
+            ],
+            "id": 524,
+            "name": "FunctionDefinition",
+            "src": "2210:18:4"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "implemented": true,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "amountRaised",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "view",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 525,
+                "name": "ParameterList",
+                "src": "2255:2:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "amount",
+                      "scope": 537,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "uint256",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "uint",
+                          "type": "uint256"
+                        },
+                        "id": 526,
+                        "name": "ElementaryTypeName",
+                        "src": "2307:4:4"
+                      }
+                    ],
+                    "id": 527,
+                    "name": "VariableDeclaration",
+                    "src": "2307:11:4"
+                  }
+                ],
+                "id": 528,
+                "name": "ParameterList",
+                "src": "2306:13:4"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "operator": "=",
+                          "type": "uint256"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "overloadedDeclarations": [
+                                null
+                              ],
+                              "referencedDeclaration": 527,
+                              "type": "uint256",
+                              "value": "amount"
+                            },
+                            "id": 529,
+                            "name": "Identifier",
+                            "src": "2334:6:4"
+                          },
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "isStructConstructorCall": false,
+                              "lValueRequested": false,
+                              "names": [
+                                null
+                              ],
+                              "type": "uint256",
+                              "type_conversion": false
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": [
+                                    {
+                                      "typeIdentifier": "t_contract$_Project_$566",
+                                      "typeString": "contract Project"
+                                    }
+                                  ],
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "member_name": "balanceOf",
+                                  "referencedDeclaration": 1080,
+                                  "type": "function (address) view external returns (uint256)"
+                                },
+                                "children": [
+                                  {
+                                    "attributes": {
+                                      "argumentTypes": null,
+                                      "overloadedDeclarations": [
+                                        null
+                                      ],
+                                      "referencedDeclaration": 384,
+                                      "type": "contract FundingToken",
+                                      "value": "fundingToken"
+                                    },
+                                    "id": 530,
+                                    "name": "Identifier",
+                                    "src": "2343:12:4"
+                                  }
+                                ],
+                                "id": 531,
+                                "name": "MemberAccess",
+                                "src": "2343:22:4"
+                              },
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 1468,
+                                  "type": "contract Project",
+                                  "value": "this"
+                                },
+                                "id": 532,
+                                "name": "Identifier",
+                                "src": "2366:4:4"
+                              }
+                            ],
+                            "id": 533,
+                            "name": "FunctionCall",
+                            "src": "2343:28:4"
+                          }
+                        ],
+                        "id": 534,
+                        "name": "Assignment",
+                        "src": "2334:37:4"
+                      }
+                    ],
+                    "id": 535,
+                    "name": "ExpressionStatement",
+                    "src": "2334:37:4"
+                  }
+                ],
+                "id": 536,
+                "name": "Block",
+                "src": "2324:54:4"
+              }
+            ],
+            "id": 537,
+            "name": "FunctionDefinition",
+            "src": "2234:144:4"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "implemented": true,
+              "isConstructor": false,
+              "name": "projectStatus",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "view",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 538,
+                "name": "ParameterList",
+                "src": "2406:2:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "",
+                      "scope": 549,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "enum Project.ProjectStatus",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "contractScope": null,
+                          "name": "ProjectStatus",
+                          "referencedDeclaration": 360,
+                          "type": "enum Project.ProjectStatus"
+                        },
+                        "id": 543,
+                        "name": "UserDefinedTypeName",
+                        "src": "2504:13:4"
+                      }
+                    ],
+                    "id": 544,
+                    "name": "VariableDeclaration",
+                    "src": "2504:13:4"
+                  }
+                ],
+                "id": 545,
+                "name": "ParameterList",
+                "src": "2503:15:4"
+              },
+              {
+                "attributes": {
+                  "arguments": [
+                    null
+                  ]
+                },
+                "children": [
+                  {
+                    "attributes": {
+                      "argumentTypes": null,
+                      "overloadedDeclarations": [
+                        null
+                      ],
+                      "referencedDeclaration": 405,
+                      "type": "modifier ()",
+                      "value": "evalExpiry"
+                    },
+                    "id": 539,
+                    "name": "Identifier",
+                    "src": "2417:10:4"
+                  }
+                ],
+                "id": 540,
+                "name": "ModifierInvocation",
+                "src": "2417:10:4"
+              },
+              {
+                "attributes": {
+                  "arguments": [
+                    null
+                  ]
+                },
+                "children": [
+                  {
+                    "attributes": {
+                      "argumentTypes": null,
+                      "overloadedDeclarations": [
+                        null
+                      ],
+                      "referencedDeclaration": 469,
+                      "type": "modifier ()",
+                      "value": "evalFundingStage"
+                    },
+                    "id": 541,
+                    "name": "Identifier",
+                    "src": "2436:16:4"
+                  }
+                ],
+                "id": 542,
+                "name": "ModifierInvocation",
+                "src": "2436:16:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "functionReturnParameters": 545
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "overloadedDeclarations": [
+                            null
+                          ],
+                          "referencedDeclaration": 380,
+                          "type": "enum Project.ProjectStatus",
+                          "value": "status"
+                        },
+                        "id": 546,
+                        "name": "Identifier",
+                        "src": "2540:6:4"
+                      }
+                    ],
+                    "id": 547,
+                    "name": "Return",
+                    "src": "2533:13:4"
+                  }
+                ],
+                "id": 548,
+                "name": "Block",
+                "src": "2523:30:4"
+              }
+            ],
+            "id": 549,
+            "name": "FunctionDefinition",
+            "src": "2384:169:4"
+          },
+          {
+            "attributes": {
+              "constant": true,
+              "implemented": true,
+              "isConstructor": false,
+              "name": "fundingStage",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "view",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 550,
+                "name": "ParameterList",
+                "src": "2580:2:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "",
+                      "scope": 561,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "enum Project.FundingStage",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "contractScope": null,
+                          "name": "FundingStage",
+                          "referencedDeclaration": 368,
+                          "type": "enum Project.FundingStage"
+                        },
+                        "id": 555,
+                        "name": "UserDefinedTypeName",
+                        "src": "2682:12:4"
+                      }
+                    ],
+                    "id": 556,
+                    "name": "VariableDeclaration",
+                    "src": "2682:12:4"
+                  }
+                ],
+                "id": 557,
+                "name": "ParameterList",
+                "src": "2681:14:4"
+              },
+              {
+                "attributes": {
+                  "arguments": [
+                    null
+                  ]
+                },
+                "children": [
+                  {
+                    "attributes": {
+                      "argumentTypes": null,
+                      "overloadedDeclarations": [
+                        null
+                      ],
+                      "referencedDeclaration": 405,
+                      "type": "modifier ()",
+                      "value": "evalExpiry"
+                    },
+                    "id": 551,
+                    "name": "Identifier",
+                    "src": "2591:10:4"
+                  }
+                ],
+                "id": 552,
+                "name": "ModifierInvocation",
+                "src": "2591:10:4"
+              },
+              {
+                "attributes": {
+                  "arguments": [
+                    null
+                  ]
+                },
+                "children": [
+                  {
+                    "attributes": {
+                      "argumentTypes": null,
+                      "overloadedDeclarations": [
+                        null
+                      ],
+                      "referencedDeclaration": 469,
+                      "type": "modifier ()",
+                      "value": "evalFundingStage"
+                    },
+                    "id": 553,
+                    "name": "Identifier",
+                    "src": "2610:16:4"
+                  }
+                ],
+                "id": 554,
+                "name": "ModifierInvocation",
+                "src": "2610:16:4"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "functionReturnParameters": 557
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "overloadedDeclarations": [
+                            null
+                          ],
+                          "referencedDeclaration": 382,
+                          "type": "enum Project.FundingStage",
+                          "value": "stage"
+                        },
+                        "id": 558,
+                        "name": "Identifier",
+                        "src": "2717:5:4"
+                      }
+                    ],
+                    "id": 559,
+                    "name": "Return",
+                    "src": "2710:12:4"
+                  }
+                ],
+                "id": 560,
+                "name": "Block",
+                "src": "2700:29:4"
+              }
+            ],
+            "id": 561,
+            "name": "FunctionDefinition",
+            "src": "2559:170:4"
+          },
+          {
+            "attributes": {
+              "constant": false,
+              "implemented": true,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "",
+              "payable": false,
+              "scope": 566,
+              "stateMutability": "nonpayable",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 562,
+                "name": "ParameterList",
+                "src": "2748:2:4"
+              },
+              {
+                "attributes": {
+                  "parameters": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 563,
+                "name": "ParameterList",
+                "src": "2751:0:4"
+              },
+              {
+                "attributes": {
+                  "statements": [
+                    null
+                  ]
+                },
+                "children": [],
+                "id": 564,
+                "name": "Block",
+                "src": "2751:2:4"
+              }
+            ],
+            "id": 565,
+            "name": "FunctionDefinition",
+            "src": "2739:14:4"
+          }
+        ],
+        "id": 566,
+        "name": "ContractDefinition",
+        "src": "66:2699:4"
+      }
+    ],
+    "id": 567,
+    "name": "SourceUnit",
+    "src": "0:2765:4"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.18+commit.9cf6e910.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "1.0.1",
+  "updatedAt": "2019-07-26T19:55:56.090Z"
+}
